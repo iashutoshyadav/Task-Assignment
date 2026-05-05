@@ -100,6 +100,9 @@ export const addMember = async (req, res) => {
     await project.save();
     await project.populate("owner", "name email role");
     await project.populate("members.user", "name email role");
+
+    req.app.get("io").to(`project:${project._id}`).emit("project:updated", project);
+
     res.json(project);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -122,6 +125,9 @@ export const removeMember = async (req, res) => {
     await project.save();
     await project.populate("owner", "name email role");
     await project.populate("members.user", "name email role");
+
+    req.app.get("io").to(`project:${project._id}`).emit("project:updated", project);
+
     res.json(project);
   } catch (err) {
     res.status(500).json({ message: err.message });

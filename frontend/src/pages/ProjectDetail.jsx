@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
 import toast from "react-hot-toast";
 import {
   Plus, X, Trash2, UserPlus, ChevronLeft, Calendar, Flag,
@@ -26,6 +27,7 @@ const STATUS_NEXT = { todo: "in_progress", in_progress: "done", done: "todo" };
 export default function ProjectDetail() {
   const { id } = useParams();
   const { user } = useAuth();
+  const socketRef = useSocket();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +58,40 @@ export default function ProjectDetail() {
   };
 
   useEffect(() => { fetchData(); }, [id]);
+
+  // Real-time socket listeners
+  useEffect(() => {
+    const socket = socketRef?.current;
+    if (!socket || !id) return;
+
+    socket.emit("join:project", id);
+
+    socket.on("task:created", (task) => {
+      setTasks((prev) => prev.some((t) => t._id === task._id) ? prev : [task, ...prev]);
+      toast.success(`New task added: "${task.title}"`, { icon: "✅" });
+    });
+
+    socket.on("task:updated", (task) => {
+      setTasks((prev) => prev.map((t) => t._id === task._id ? task : t));
+    });
+
+    socket.on("task:deleted", ({ taskId }) => {
+      setTasks((prev) => prev.filter((t) => t._id !== taskId));
+      toast("A task was removed", { icon: "🗑️" });
+    });
+
+    socket.on("project:updated", (updated) => {
+      setProject(updated);
+    });
+
+    return () => {
+      socket.emit("leave:project", id);
+      socket.off("task:created");
+      socket.off("task:updated");
+      socket.off("task:deleted");
+      socket.off("project:updated");
+    };
+  }, [socketRef, id]);
 
   const allMembers = project
     ? [{ user: project.owner, role: "owner" }, ...(project.members || [])]
