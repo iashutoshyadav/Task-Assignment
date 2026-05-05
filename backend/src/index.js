@@ -2,30 +2,34 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
-import path from "path";
-import { fileURLToPath } from "url";
 
 import authRoutes from "./routes/auth.js";
 import projectRoutes from "./routes/projects.js";
 import dashboardRoutes from "./routes/dashboard.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL || "*", credentials: true }));
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(",").map((o) => o.trim())
+  : ["http://localhost:5173"];
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // Allow requests with no origin (mobile apps, curl, Render health checks)
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      cb(new Error(`CORS blocked: ${origin}`));
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.get("/api/health", (_, res) => res.json({ status: "ok" }));
-
-// Serve React build in production
-if (process.env.NODE_ENV === "production") {
-  const clientBuild = path.join(__dirname, "../../frontend/dist");
-  app.use(express.static(clientBuild));
-  app.get("*", (_, res) => res.sendFile(path.join(clientBuild, "index.html")));
-}
 
 app.use((err, _req, res, _next) => {
   console.error(err);
