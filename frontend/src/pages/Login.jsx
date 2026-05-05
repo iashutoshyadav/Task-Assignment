@@ -57,7 +57,7 @@ export default function Login() {
             ))}
           </div>
         </div>
-        <p className="text-violet-300 text-sm">© 2024 TaskFlow</p>
+        <p className="text-violet-300 text-sm">© 2026 TaskFlow</p>
       </div>
 
       {/* Right panel */}
