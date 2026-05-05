@@ -80,7 +80,10 @@ export default function ProjectDetail() {
 
   const handleTaskSubmit = async (e) => {
     e.preventDefault(); setSubmitting(true);
-    const body = { ...taskForm, assignee: taskForm.assignee || null, dueDate: taskForm.dueDate || null };
+    const body = { ...taskForm, dueDate: taskForm.dueDate || null };
+    // Non-admins cannot send assignee — strip it to avoid 403
+    if (!isProjectAdmin) delete body.assignee;
+    else body.assignee = taskForm.assignee || null;
     try {
       if (editingTask) {
         const { data } = await api.put(`/projects/${id}/tasks/${editingTask._id}`, body);
@@ -371,14 +374,33 @@ export default function ProjectDetail() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
+                {/* Assignee — only admins can assign tasks */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Assignee</label>
-                  <select className="input" value={taskForm.assignee} onChange={(e) => setTaskForm({ ...taskForm, assignee: e.target.value })}>
-                    <option value="">Unassigned</option>
-                    {allMembers.map(({ user: u }) => (
-                      <option key={u._id} value={u._id}>{u.name}</option>
-                    ))}
-                  </select>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Assignee
+                    {!isProjectAdmin && (
+                      <span className="ml-2 text-xs font-normal text-slate-400">(admin only)</span>
+                    )}
+                  </label>
+                  {isProjectAdmin ? (
+                    <select
+                      className="input"
+                      value={taskForm.assignee}
+                      onChange={(e) => setTaskForm({ ...taskForm, assignee: e.target.value })}
+                    >
+                      <option value="">Unassigned</option>
+                      {allMembers.map(({ user: u }) => (
+                        <option key={u._id} value={u._id}>{u.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="input bg-slate-50 text-slate-400 cursor-not-allowed flex items-center gap-2">
+                      <span className="text-slate-300">🔒</span>
+                      {taskForm.assignee
+                        ? allMembers.find((m) => m.user._id === taskForm.assignee)?.user.name || "Assigned"
+                        : "Only admins can assign"}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Due Date</label>

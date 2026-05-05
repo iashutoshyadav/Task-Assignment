@@ -32,7 +32,14 @@ export const createTask = async (req, res) => {
     if (req.user.role !== "admin" && !project.isMember(req.user._id)) {
       return res.status(403).json({ message: "Access denied" });
     }
+
     const { title, description, assignee, status, priority, dueDate } = req.body;
+
+    // Only project admins / global admin can assign tasks to members
+    if (assignee && req.user.role !== "admin" && !project.isAdmin(req.user._id)) {
+      return res.status(403).json({ message: "Only admins can assign tasks to members" });
+    }
+
     const task = await Task.create({
       title,
       description,
@@ -59,6 +66,11 @@ export const updateTask = async (req, res) => {
     }
     const task = await Task.findOne({ _id: req.params.taskId, project: project._id });
     if (!task) return res.status(404).json({ message: "Task not found" });
+
+    // Only project admins / global admin can change the assignee
+    if ("assignee" in req.body && req.user.role !== "admin" && !project.isAdmin(req.user._id)) {
+      return res.status(403).json({ message: "Only admins can assign tasks to members" });
+    }
 
     const fields = ["title", "description", "assignee", "status", "priority", "dueDate"];
     fields.forEach((f) => { if (req.body[f] !== undefined) task[f] = req.body[f]; });
