@@ -14,16 +14,35 @@ router.use(protect);
 router.use("/:projectId/tasks", taskRouter);
 
 router.get("/", getProjects);
+
 router.post(
   "/",
   [body("name").trim().notEmpty().withMessage("Project name is required")],
   validate,
   createProject
 );
+
 router.get("/:id", getProject);
-router.put("/:id", updateProject);
+
+router.put(
+  "/:id",
+  [body("name").optional().trim().notEmpty().withMessage("Project name cannot be empty")],
+  validate,
+  updateProject
+);
+
 router.delete("/:id", deleteProject);
-router.post("/:id/members", addMember);
+
+router.post(
+  "/:id/members",
+  [
+    body("email").isEmail().withMessage("Valid email is required"),
+    body("role").optional().isIn(["admin", "member"]).withMessage("Role must be admin or member"),
+  ],
+  validate,
+  addMember
+);
+
 router.delete("/:id/members/:userId", removeMember);
 
 export default router;
